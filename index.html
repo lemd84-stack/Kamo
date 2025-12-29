@@ -3,54 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Tracker Pro v2.7</title>
+    <title>Mon Tracker Pro v2.8</title>
     <style>
         :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; --gray: #888; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
-        
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav); display: flex; justify-content: space-around; padding: 10px 5px; border-top: 1px solid #333; z-index: 100; }
         .nav-item { background: none; border: none; color: var(--gray); font-size: 0.65rem; cursor: pointer; text-transform: uppercase; padding: 10px 5px; border-radius: 8px; flex: 1; transition: 0.3s; }
         .nav-item.active { color: var(--accent); background: rgba(187, 134, 252, 0.1); font-weight: bold; }
-
         .header { font-size: 1.2rem; font-weight: bold; color: var(--accent); margin-bottom: 20px; }
         .view { display: none; }
         .view.active { display: block; }
-
         input, textarea, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
         label { display: block; margin-top: 15px; font-size: 0.8rem; text-transform: uppercase; color: var(--gray); }
-        
         .tag { padding: 10px 15px; background: #333; border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; }
         .tag.selected { background: var(--accent); color: black; font-weight: bold; }
         .select-area { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
-
         .db-form { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); position: relative; }
-        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; }
-        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; margin-right: 10px; }
-
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .stats-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #333; }
-        .stat-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); display: block; }
-        
-        .history-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
+        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; margin-left: 10px; }
+        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; float: right; }
         .save-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 12px; font-weight: bold; margin-top: 20px; color: black; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
     <div id="view-saisie" class="view active">
-        <div class="header" id="saisie-title">Nouvelle Entrée</div>
-        <input type="hidden" id="edit-entry-id">
+        <div class="header">Nouvelle Entrée</div>
         <label>Date</label>
         <input type="date" id="entry-date">
-        <label>1. Où ça ?</label>
-        <div id="input-places" class="select-area"></div>
-        <label>2. Quel Événement ? (Optionnel)</label>
-        <div id="input-events" class="select-area"></div>
-        <label>3. Avec Qui ?</label>
-        <div id="input-people" class="select-area"></div>
-        <button class="save-btn" id="main-save-btn" onclick="saveEntry()">ENREGISTRER</button>
-        <button class="save-btn" id="cancel-edit-btn" style="display:none; background:#555; margin-top:10px;" onclick="cancelEdit()">ANNULER MODIFICATION</button>
+        <label>1. Où ça ?</label><div id="input-places" class="select-area"></div>
+        <label>2. Quel Événement ? (Optionnel)</label><div id="input-events" class="select-area"></div>
+        <label>3. Avec Qui ?</label><div id="input-people" class="select-area"></div>
+        <button class="save-btn" onclick="saveEntry()">ENREGISTRER</button>
     </div>
 
     <div id="view-db" class="view">
@@ -59,19 +43,7 @@
     </div>
 
     <div id="view-resume" class="view">
-        <div class="header">Résumés & Historique</div>
-        <select id="stats-period" onchange="renderStats()">
-            <option value="all">Depuis toujours</option>
-            <option value="year">Cette année</option>
-            <option value="month">Ce mois-ci</option>
-            <option value="week">Cette semaine</option>
-        </select>
-        <div class="stats-grid">
-            <div class="stats-card"><span id="stat-total" class="stat-val">0</span><span class="stat-label">Sorties</span></div>
-            <div class="stats-card"><span id="stat-unique-people" class="stat-val">0</span><span class="stat-label">Personnes</span></div>
-        </div>
-        <div id="stats-rankings"></div>
-        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+        <div class="header">Historique</div>
         <div id="history-list"></div>
     </div>
 
@@ -85,37 +57,37 @@
 
     <script>
         let currentDBType = '';
+        let editingId = null;
         let dbs = {
-            places: JSON.parse(localStorage.getItem('db_places_v27') || "[]"),
-            events: JSON.parse(localStorage.getItem('db_events_v27') || "[]"),
-            people: JSON.parse(localStorage.getItem('db_people_v27') || "[]")
+            places: JSON.parse(localStorage.getItem('db_places_v28') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events_v28') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people_v28') || "[]")
         };
+        let history = JSON.parse(localStorage.getItem('tracker_history_v28') || "[]");
         let selections = { places: '', events: '', people: [] };
-        let history = JSON.parse(localStorage.getItem('tracker_history_v27') || "[]");
 
-        function init() {
-            document.getElementById('entry-date').valueAsDate = new Date();
-            renderSaisie();
-        }
+        function init() { document.getElementById('entry-date').valueAsDate = new Date(); renderSaisie(); }
 
         function showView(viewId, dbType = '') {
-            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            editingId = null;
+            document.querySelectorAll('.view, .nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
-            
-            const btnText = dbType ? dbType : viewId;
-            document.querySelectorAll('.nav-item').forEach(btn => {
-                if(btn.innerText.toLowerCase().includes(btnText.toLowerCase())) btn.classList.add('active');
-            });
-
-            if (dbType) { currentDBType = dbType; renderDBForm(); renderDBList(); }
-            if (viewId === 'saisie') renderSaisie();
-            if (viewId === 'resume') renderStats();
+            if(dbType) { 
+                currentDBType = dbType; 
+                renderDBForm(); 
+                renderDBList();
+                document.querySelectorAll('.nav-item').forEach(n => { if(n.innerText.toLowerCase().includes(dbType)) n.classList.add('active'); });
+            } else {
+                document.querySelectorAll('.nav-item').forEach(n => { if(n.innerText.toLowerCase().includes(viewId)) n.classList.add('active'); });
+            }
+            if(viewId === 'saisie') renderSaisie();
+            if(viewId === 'resume') renderStats();
         }
 
         function renderDBForm() {
             const container = document.getElementById('form-container');
-            let html = `<strong>Nouvelle entrée</strong><br><br>`;
+            const title = editingId ? "Modifier l'élément" : "Nouvelle entrée";
+            let html = `<strong>${title}</strong><br><br>`;
             
             if (currentDBType === 'people') {
                 html += `<input type="text" id="f-nom" placeholder="Nom complet">
@@ -125,112 +97,98 @@
                          <input type="text" id="f-insta" placeholder="@ Instagram">
                          <label>Anniversaire</label><input type="date" id="f-birth">`;
             } else if (currentDBType === 'places') {
-                html += `<input type="text" id="f-nom" placeholder="Nom du lieu">
-                         <input type="text" id="f-addr" placeholder="Adresse">`;
+                html += `<input type="text" id="f-nom" placeholder="Nom du lieu"><input type="text" id="f-addr" placeholder="Adresse">`;
             } else if (currentDBType === 'events') {
-                html += `<input type="text" id="f-nom" placeholder="Nom de l'événement">
-                         <textarea id="f-desc" placeholder="Description"></textarea>`;
+                html += `<input type="text" id="f-nom" placeholder="Nom de l'événement"><textarea id="f-desc" placeholder="Description"></textarea>`;
             }
             
-            html += `<button class="save-btn" style="padding:10px;margin-top:5px" onclick="addToDB()">Ajouter à la base</button>`;
+            html += `<button class="save-btn" style="padding:10px;" onclick="saveToDB()">${editingId ? 'Mettre à jour' : 'Ajouter à la base'}</button>`;
+            if(editingId) html += `<button class="save-btn" style="padding:10px; background:#555; margin-top:5px;" onclick="editingId=null;renderDBForm()">Annuler</button>`;
             container.innerHTML = html;
+
+            if(editingId) {
+                const item = dbs[currentDBType].find(i => i.id === editingId);
+                document.getElementById('f-nom').value = item.nom || '';
+                if(currentDBType === 'people') {
+                    document.getElementById('f-alias').value = item.alias || '';
+                    document.getElementById('f-tel').value = item.tel || '';
+                    document.getElementById('f-insta').value = item.insta || '';
+                    document.getElementById('f-birth').value = item.anniv || '';
+                }
+                if(document.getElementById('f-addr')) document.getElementById('f-addr').value = item.adresse || '';
+                if(document.getElementById('f-desc')) document.getElementById('f-desc').value = item.description || '';
+            }
         }
 
-        function addToDB() {
-            const mainName = document.getElementById('f-nom').value.trim();
-            if(!mainName) return alert("Le nom est obligatoire");
-
-            const newItem = { id: Date.now(), nom: mainName };
+        function saveToDB() {
+            const nom = document.getElementById('f-nom').value.trim();
+            if(!nom) return alert("Le nom est obligatoire");
             
-            if(currentDBType === 'people') {
-                newItem.alias = document.getElementById('f-alias').value.trim() || mainName;
-                newItem.adresse = document.getElementById('f-addr').value;
-                newItem.tel = document.getElementById('f-tel').value;
-                newItem.insta = document.getElementById('f-insta').value;
-                newItem.anniv = document.getElementById('f-birth').value;
-            } else if(currentDBType === 'places') {
-                newItem.alias = mainName; // Alias = Nom pour les lieux
-                newItem.adresse = document.getElementById('f-addr').value;
-            } else if(currentDBType === 'events') {
-                newItem.alias = mainName; // Alias = Nom pour les événements
-                newItem.description = document.getElementById('f-desc').value;
-            }
+            let item = editingId ? dbs[currentDBType].find(i => i.id === editingId) : { id: Date.now() };
+            item.nom = nom;
+            item.alias = (currentDBType === 'people') ? document.getElementById('f-alias').value.trim() : nom;
+            if(document.getElementById('f-addr')) item.adresse = document.getElementById('f-addr').value;
+            if(document.getElementById('f-tel')) item.tel = document.getElementById('f-tel').value;
+            if(document.getElementById('f-insta')) item.insta = document.getElementById('f-insta').value;
+            if(document.getElementById('f-birth')) item.anniv = document.getElementById('f-birth').value;
+            if(document.getElementById('f-desc')) item.description = document.getElementById('f-desc').value;
 
-            if(dbs[currentDBType].some(i => i.alias.toLowerCase() === newItem.alias.toLowerCase())) {
-                return alert("Cet alias ou nom existe déjà !");
-            }
-
-            dbs[currentDBType].push(newItem);
-            localStorage.setItem('db_'+currentDBType+'_v27', JSON.stringify(dbs[currentDBType]));
-            renderDBForm(); renderDBList();
+            if(!editingId) dbs[currentDBType].push(item);
+            localStorage.setItem('db_'+currentDBType+'_v28', JSON.stringify(dbs[currentDBType]));
+            editingId = null; renderDBForm(); renderDBList();
         }
 
         function renderDBList() {
             document.getElementById('db-list').innerHTML = dbs[currentDBType].map(item => `
                 <div class="db-item">
                     <span class="del-btn" onclick="deleteDBItem(${item.id})">Supprimer</span>
-                    <strong>${item.alias}</strong> ${item.nom !== item.alias ? `<br><small style="color:var(--gray)">${item.nom}</small>` : ''}
+                    <span class="edit-btn" onclick="startEditDB(${item.id})">Modifier</span>
+                    <strong>${item.alias}</strong>${item.nom !== item.alias ? `<br><small>${item.nom}</small>` : ''}
                 </div>
             `).join('');
         }
 
+        function startEditDB(id) { editingId = id; renderDBForm(); window.scrollTo(0,0); }
+
         function deleteDBItem(id) {
-            if(confirm("Supprimer de la base ?")) {
+            if(confirm("Supprimer ?")) {
                 dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id);
-                localStorage.setItem('db_'+currentDBType+'_v27', JSON.stringify(dbs[currentDBType]));
+                localStorage.setItem('db_'+currentDBType+'_v28', JSON.stringify(dbs[currentDBType]));
                 renderDBList();
             }
         }
 
         function renderSaisie() {
-            renderTagCloud('places', 'single');
-            renderTagCloud('events', 'single');
-            renderTagCloud('people', 'multi');
+            ['places', 'events', 'people'].forEach(type => {
+                const container = document.getElementById('input-' + type);
+                container.innerHTML = dbs[type].map(item => {
+                    const sel = (type === 'people') ? selections[type].includes(item.alias) : selections[type] === item.alias;
+                    return `<div class="tag ${sel ? 'selected' : ''}" onclick="selectTag('${type}', '${item.alias}')">${item.alias}</div>`;
+                }).join('');
+            });
         }
 
-        function renderTagCloud(type, mode) {
-            const container = document.getElementById('input-' + type);
-            container.innerHTML = dbs[type].map(item => {
-                const isSelected = mode === 'single' ? selections[type] === item.alias : selections[type].includes(item.alias);
-                return `<div class="tag ${isSelected ? 'selected' : ''}" onclick="selectTag('${type}', '${item.alias}', '${mode}')">${item.alias}</div>`;
-            }).join('');
-        }
-
-        function selectTag(type, val, mode) {
-            if(mode === 'single') selections[type] = (selections[type] === val) ? '' : val;
-            else {
+        function selectTag(type, val) {
+            if(type === 'people') {
                 const idx = selections[type].indexOf(val);
-                if(idx > -1) selections[type].splice(idx, 1);
-                else selections[type].push(val);
+                idx > -1 ? selections[type].splice(idx, 1) : selections[type].push(val);
+            } else {
+                selections[type] = (selections[type] === val) ? '' : val;
             }
             renderSaisie();
         }
 
         function saveEntry() {
-            if(!selections.places) return alert("Veuillez choisir un lieu.");
-            const entryData = {
-                id: document.getElementById('edit-entry-id').value || Date.now(),
-                date: document.getElementById('entry-date').value,
-                event: selections.events || "Aucun événement",
-                place: selections.places,
-                people: [...selections.people]
-            };
-            history.push(entryData);
-            localStorage.setItem('tracker_history_v27', JSON.stringify(history));
+            if(!selections.places) return alert("Lieu obligatoire");
+            history.push({ id: Date.now(), date: document.getElementById('entry-date').value, event: selections.events || "Aucun", place: selections.places, people: [...selections.people] });
+            localStorage.setItem('tracker_history_v28', JSON.stringify(history));
             alert("Enregistré !");
-            cancelEdit();
-        }
-
-        function cancelEdit() {
-            selections = { places: '', events: '', people: [] };
-            renderSaisie();
+            selections = { places: '', events: '', people: [] }; renderSaisie();
         }
 
         function renderStats() {
-            const filtered = history.sort((a,b) => new Date(b.date) - new Date(a.date));
-            document.getElementById('stat-total').innerText = filtered.length;
-            document.getElementById('history-list').innerHTML = filtered.map(e => `
-                <div class="history-item"><strong>${e.date}</strong> — ${e.place}<br><small>${e.event}</small></div>
+            document.getElementById('history-list').innerHTML = history.slice().reverse().map(e => `
+                <div class="history-item"><strong>${e.date}</strong> — ${e.place}<br><small>${e.event} avec ${e.people.join(', ') || 'seul'}</small></div>
             `).join('');
         }
 
