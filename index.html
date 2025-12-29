@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mon Tracker v2.1</title>
+    <style>
+        :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
+        
+        .header { font-size: 1.2rem; font-weight: bold; color: var(--accent); margin-bottom: 10px; }
+        .date-picker-container { margin-bottom: 20px; }
+        input[type="date"] { background: #2c2c2c; color: white; border: 1px solid var(--accent); padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; }
+
+        .view { display: none; }
+        .view.active { display: block; }
+
+        label { display: block; margin-top: 25px; font-size: 0.8rem; text-transform: uppercase; color: #888; }
+        .select-area { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; min-height: 40px; }
+        .tag { padding: 10px 15px; background: #333; border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; }
+        .tag.selected { background: var(--accent); color: black; font-weight: bold; }
+        
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav); display: flex; justify-content: space-around; padding: 15px 5px; border-top: 1px solid #333; z-index: 100; }
+        .nav-item { background: none; border: none; color: #888; font-size: 0.7rem; cursor: pointer; text-transform: uppercase; }
+        .nav-item.active { color: var(--accent); font-weight: bold; }
+
+        .db-input-group { display: flex; gap: 10px; margin-bottom: 20px; }
+        input[type="text"] { flex: 1; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; }
+        .add-btn { padding: 12px; background: var(--accent); border: none; border-radius: 8px; color: black; font-weight: bold; }
+        .db-list-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #333; align-items: center; }
+        .delete-btn { color: #ff5252; font-size: 0.8rem; border: 1px solid #ff5252; padding: 4px 8px; border-radius: 5px; }
+
+        .stats-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 15px; border-left: 4px solid var(--accent); }
+        .stat-val { font-size: 1.2rem; font-weight: bold; color: var(--accent); }
+
+        .save-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 12px; font-weight: bold; margin-top: 30px; color: black; font-size: 1rem; }
+        
+        .history-log { margin-top: 20px; font-size: 0.9rem; }
+        .history-entry { background: #252525; padding: 10px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; }
+    </style>
+</head>
+<body>
+
+    <div id="view-home" class="view active">
+        <div class="header">Date de l'activité :</div>
+        <div class="date-picker-container">
+            <input type="date" id="manual-date">
+        </div>
+        
+        <label>1. Quel Événement ?</label>
+        <div id="input-events" class="select-area"></div>
+
+        <label>2. Avec Qui ?</label>
+        <div id="input-people" class="select-area"></div>
+
+        <label>3. Où ça ?</label>
+        <div id="input-places" class="select-area"></div>
+
+        <button class="save-btn" onclick="saveEntry()">ENREGISTRER</button>
+    </div>
+
+    <div id="view-db" class="view">
+        <h2 id="db-title" style="color:var(--accent)">Base de données</h2>
+        <div class="db-input-group">
+            <input type="text" id="db-new-item" placeholder="Nouveau nom...">
+            <button class="add-btn" onclick="addToDB()">AJOUTER</button>
+        </div>
+        <div id="db-list"></div>
+    </div>
+
+    <div id="view-stats" class="view">
+        <div class="header">Statistiques</div>
+        <div id="stats-content"></div>
+        
+        <h3 style="margin-top:30px; color:var(--accent)">Historique des entrées</h3>
+        <div id="history-log" class="history-log"></div>
+    </div>
+
+    <nav class="nav-bar">
+        <button class="nav-item active" onclick="showView('home')">Saisie</button>
+        <button class="nav-item" onclick="showView('db', 'places')">Lieux</button>
+        <button class="nav-item" onclick="showView('db', 'events')">Événements</button>
+        <button class="nav-item" onclick="showView('db', 'people')">Personnes</button>
+        <button class="nav-item" onclick="showView('stats')">Résumé</button>
+    </nav>
+
+    <script>
+        let currentDBType = '';
+        let dbs = {
+            places: JSON.parse(localStorage.getItem('db_places') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people') || "[]")
+        };
+        let selections = { places: '', events: '', people: [] };
+        let history = JSON.parse(localStorage.getItem('tracker_history') || "[]");
+
+        function init() {
+            // Fixer la date d'aujourd'hui par défaut
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('manual-date').value = today;
+            renderHome();
+        }
+
+        function showView(viewId, dbType = '') {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => {
+                n.classList.remove('active');
+                if(n.innerText.toLowerCase().includes(viewId) || n.innerText.toLowerCase().includes(dbType)) n.classList.add('active');
+            });
+            
+            document.getElementById('view-' + viewId).classList.add('active');
+            if (dbType) {
+                currentDBType = dbType;
+                document.getElementById('db-title').innerText = "Gérer : " + dbType;
+                renderDBList();
+            }
+            if (viewId === 'home') renderHome();
+            if (viewId === 'stats') renderStats();
+        }
+
+        function addToDB() {
+            const val = document.getElementById('db-new-item').value.trim();
+            if (val && !dbs[currentDBType].includes(val)) {
+                dbs[currentDBType].push(val);
+                dbs[currentDBType].sort();
+                localStorage.setItem('db_' + currentDBType, JSON.stringify(dbs[currentDBType]));
+                document.getElementById('db-new-item').value = '';
+                renderDBList();
+            }
+        }
+
+        function deleteFromDB(item) {
+            if(confirm(`Supprimer "${item}" de la base ?`)) {
+                dbs[currentDBType] = dbs[currentDBType].filter(i => i !== item);
+                localStorage.setItem('db_' + currentDBType, JSON.stringify(dbs[currentDBType]));
+                renderDBList();
+            }
+        }
+
+        function renderDBList() {
+            const list = document.getElementById('db-list');
+            list.innerHTML = dbs[currentDBType].map(item => `
+                <div class="db-list-item">
+                    <span>${item}</span>
+                    <span class="delete-btn" onclick="deleteFromDB('${item}')">Supprimer</span>
+                </div>
+            `).join('');
+        }
+
+        function renderHome() {
+            renderSelect('events', 'single');
+            renderSelect('people', 'multi');
+            renderSelect('places', 'single');
+        }
+
+        function renderSelect(type, mode) {
+            const container = document.getElementById('input-' + type);
+            container.innerHTML = dbs[type].map(item => {
+                const isSelected = mode === 'single' ? selections[type] === item : selections[type].includes(item);
+                return `<div class="tag ${isSelected ? 'selected' : ''}" onclick="toggleSelect('${type}', '${item}', '${mode}')">${item}</div>`;
+            }).join('');
+        }
+
+        function toggleSelect(type, item, mode) {
+            if (mode === 'single') {
+                selections[type] = (selections[type] === item) ? '' : item;
+            } else {
+                const idx = selections[type].indexOf(item);
+                if (idx > -1) selections[type].splice(idx, 1);
+                else selections[type].push(item);
+            }
+            renderSelect(type, mode);
+        }
+
+        function saveEntry() {
+            const chosenDate = document.getElementById('manual-date').value;
+            if (!selections.events) return alert("Choisis un événement !");
+            
+            const entry = {
+                id: Date.now(),
+                date: chosenDate,
+                event: selections.events,
+                people: [...selections.people],
+                place: selections.places
+            };
+            
+            history.push(entry);
+            // Trier l'historique par date
+            history.sort((a, b) => new Date(b.date) - new Date(a.date));
+            localStorage.setItem('tracker_history', JSON.stringify(history));
+            
+            alert("Enregistré pour le " + chosenDate);
+            selections = { places: '', events: '', people: [] };
+            renderHome();
+        }
+
+        function deleteEntry(id) {
+            if(confirm("Supprimer cette entrée ?")) {
+                history = history.filter(e => e.id !== id);
+                localStorage.setItem('tracker_history', JSON.stringify(history));
+                renderStats();
+            }
+        }
+
+        function renderStats() {
+            const container = document.getElementById('stats-content');
+            const logContainer = document.getElementById('history-log');
+            
+            if (history.length === 0) {
+                container.innerHTML = "Aucune donnée.";
+                logContainer.innerHTML = "";
+                return;
+            }
+
+            const now = new Date();
+            const stats = { total: history.length, year: 0 };
+            const topPeople = {};
+
+            history.forEach(e => {
+                const d = new Date(e.date);
+                if (d.getFullYear() === now.getFullYear()) stats.year++;
+                e.people.forEach(p => topPeople[p] = (topPeople[p] || 0) + 1);
+            });
+
+            container.innerHTML = `
+                <div class="stats-card">Total historique : <span class="stat-val">${stats.total}</span></div>
+                <div class="stats-card">Année ${now.getFullYear()} : <span class="stat-val">${stats.year}</span></div>
+            `;
+
+            logContainer.innerHTML = history.slice(0, 20).map(e => `
+                <div class="history-entry">
+                    <div>
+                        <strong>${e.date}</strong> - ${e.event}<br>
+                        <small>${e.place} avec ${e.people.join(', ')}</small>
+                    </div>
+                    <div class="delete-btn" onclick="deleteEntry(${e.id})">X</div>
+                </div>
+            `).join('');
+        }
+
+        init();
+    </script>
+</body>
+</html>
