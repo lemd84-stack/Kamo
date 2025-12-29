@@ -3,32 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Tracker Pro v3.0</title>
+    <title>Mon Tracker Pro v3.1</title>
     <style>
-        :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; --gray: #888; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
-        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav); display: flex; justify-content: space-around; padding: 10px 5px; border-top: 1px solid #333; z-index: 100; }
-        .nav-item { background: none; border: none; color: var(--gray); font-size: 0.65rem; cursor: pointer; text-transform: uppercase; padding: 10px 5px; border-radius: 8px; flex: 1; transition: 0.3s; }
-        .nav-item.active { color: var(--accent); background: rgba(187, 134, 252, 0.1); font-weight: bold; }
-        .header { font-size: 1.2rem; font-weight: bold; color: var(--accent); margin-bottom: 20px; }
+        :root { 
+            --bg: #0a0c10; 
+            --card: #14181f; 
+            --accent: #12ad8d; /* Phthalo Green */
+            --blue-accent: #1e3a5f; /* Deep Ocean Blue */
+            --text: #e0e6ed; 
+            --nav: #0f1218; 
+            --gray: #94a3b8; 
+            --border: #1e293b;
+        }
+        
+        body { font-family: 'Segoe UI', Roboto, Helvetica, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; line-height: 1.5; }
+        
+        .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav); display: flex; justify-content: space-around; padding: 12px 5px; border-top: 1px solid var(--border); z-index: 100; box-shadow: 0 -10px 25px rgba(0,0,0,0.5); }
+        .nav-item { background: none; border: none; color: var(--gray); font-size: 0.7rem; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; padding: 10px 5px; border-radius: 12px; flex: 1; transition: 0.4s; }
+        .nav-item.active { color: var(--accent); background: rgba(18, 173, 141, 0.1); font-weight: bold; }
+
+        .header { font-size: 1.3rem; font-weight: 700; color: var(--accent); margin-bottom: 25px; border-bottom: 2px solid var(--accent); display: inline-block; padding-bottom: 5px; }
         .view { display: none; }
-        .view.active { display: block; }
-        input, textarea, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
-        label { display: block; margin-top: 15px; font-size: 0.8rem; text-transform: uppercase; color: var(--gray); }
-        .tag { padding: 10px 15px; background: #333; border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; display: inline-block; margin: 4px; }
-        .tag.selected { background: var(--accent); color: black; font-weight: bold; }
-        .db-form { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
-        .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); }
-        .details-pane { background: #252525; padding: 10px; border-radius: 5px; margin-top: 8px; font-size: 0.85rem; color: var(--gray); border: 1px dashed #444; pointer-events: none; }
-        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; margin-left: 15px; }
-        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; float: right; }
-        .save-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 12px; font-weight: bold; margin-top: 20px; color: black; font-size: 1.1rem; }
-        .stats-container { display: flex; flex-direction: column; gap: 15px; }
-        .stats-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #333; }
-        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; }
-        .filter-group { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-        .filter-btn { padding: 8px 12px; background: #333; border-radius: 20px; font-size: 0.75rem; border: none; color: white; white-space: nowrap; }
-        .filter-btn.active { background: var(--accent); color: black; font-weight: bold; }
+        .view.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        input, textarea, select { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--border); background: #1a202c; color: white; box-sizing: border-box; margin-bottom: 15px; font-size: 1rem; transition: 0.3s; }
+        input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 2px rgba(18, 173, 141, 0.2); }
+        label { display: block; margin-top: 20px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: var(--accent); letter-spacing: 1.5px; margin-bottom: 8px; }
+        
+        .tag { padding: 12px 18px; background: var(--card); border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid var(--border); display: inline-block; margin: 5px; color: var(--text); transition: 0.3s; }
+        .tag.selected { background: linear-gradient(135deg, var(--accent), #0d7a63); color: #000; font-weight: 700; border-color: transparent; box-shadow: 0 4px 12px rgba(18, 173, 141, 0.3); }
+
+        .db-form { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 25px; border: 1px solid var(--border); }
+        .db-item { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 12px; border-left: 5px solid var(--accent); transition: 0.3s; border-right: 1px solid var(--border); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+        .db-item:active { transform: scale(0.98); }
+        
+        .details-pane { background: #0f172a; padding: 15px; border-radius: 10px; margin-top: 10px; font-size: 0.9rem; color: #cbd5e1; border-left: 2px solid var(--blue-accent); }
+        .del-btn { color: #f87171; cursor: pointer; font-size: 0.75rem; float: right; margin-left: 15px; text-transform: uppercase; font-weight: bold; }
+        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.75rem; float: right; text-transform: uppercase; font-weight: bold; }
+
+        .save-btn { width: 100%; padding: 18px; background: linear-gradient(135deg, var(--accent), #0d7a63); border: none; border-radius: 12px; font-weight: 800; margin-top: 25px; color: #000; font-size: 1.1rem; letter-spacing: 1px; cursor: pointer; transition: 0.3s; }
+        .save-btn:active { transform: scale(0.97); opacity: 0.9; }
+
+        .stats-card { background: var(--card); padding: 20px; border-radius: 15px; margin-bottom: 15px; border: 1px solid var(--border); }
+        .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #1e293b; }
+        .stat-row:last-child { border-bottom: none; }
+        
+        .filter-group { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 10px; }
+        .filter-btn { padding: 10px 16px; background: var(--card); border-radius: 20px; font-size: 0.8rem; border: 1px solid var(--border); color: var(--gray); white-space: nowrap; transition: 0.3s; }
+        .filter-btn.active { background: var(--blue-accent); color: white; border-color: var(--accent); }
     </style>
 </head>
 <body>
@@ -38,7 +61,7 @@
         <label>Date</label>
         <input type="date" id="entry-date">
         <label>1. Où ça ?</label><div id="input-places" class="select-area"></div>
-        <label>2. Quel Événement ? (Optionnel)</label><div id="input-events" class="select-area"></div>
+        <label>2. Quel Événement ?</label><div id="input-events" class="select-area"></div>
         <label>3. Avec Qui ?</label><div id="input-people" class="select-area"></div>
         <button class="save-btn" onclick="saveEntry()">ENREGISTRER</button>
     </div>
@@ -56,13 +79,13 @@
             <button class="filter-btn" onclick="setStatFilter('year', this)">Année</button>
             <button class="filter-btn" onclick="setStatFilter('all', this)">Toujours</button>
         </div>
-        <div id="stats-content" class="stats-container"></div>
+        <div id="stats-content"></div>
     </div>
 
     <nav class="nav-bar">
         <button class="nav-item active" onclick="showView('saisie')">Saisie</button>
         <button class="nav-item" onclick="showView('db', 'places')">Lieux</button>
-        <button class="nav-item" onclick="showView('db', 'events')">Événements</button>
+        <button class="nav-item" onclick="showView('db', 'events')">Évents</button>
         <button class="nav-item" onclick="showView('db', 'people')">Personnes</button>
         <button class="nav-item" onclick="showView('resume')">Résumé</button>
     </nav>
@@ -73,11 +96,11 @@
         let openDetailId = null;
         let statFilter = 'week';
         let dbs = {
-            places: JSON.parse(localStorage.getItem('db_places_v3') || "[]"),
-            events: JSON.parse(localStorage.getItem('db_events_v3') || "[]"),
-            people: JSON.parse(localStorage.getItem('db_people_v3') || "[]")
+            places: JSON.parse(localStorage.getItem('db_places_v31') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events_v31') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people_v31') || "[]")
         };
-        let history = JSON.parse(localStorage.getItem('tracker_history_v3') || "[]");
+        let history = JSON.parse(localStorage.getItem('tracker_history_v31') || "[]");
         let selections = { places: '', events: '', people: [] };
 
         function init() { document.getElementById('entry-date').valueAsDate = new Date(); renderSaisie(); }
@@ -98,7 +121,7 @@
 
         function renderDBForm() {
             const container = document.getElementById('form-container');
-            let html = `<strong>Nouvelle entrée</strong><br><br>`;
+            let html = `<strong style="color:var(--accent)">Nouvelle entrée</strong><br><br>`;
             if (currentDBType === 'people') {
                 html += `<input type="text" id="f-nom" placeholder="Nom complet"><input type="text" id="f-alias" placeholder="Alias">
                          <input type="text" id="f-addr" placeholder="Adresse"><input type="tel" id="f-tel" placeholder="Téléphone">
@@ -108,8 +131,8 @@
             } else if (currentDBType === 'events') {
                 html += `<input type="text" id="f-nom" placeholder="Nom de l'événement"><textarea id="f-desc" placeholder="Description"></textarea>`;
             }
-            html += `<button class="save-btn" style="padding:10px;" onclick="saveToDB()">${editingId ? 'Mettre à jour' : 'Ajouter à la base'}</button>`;
-            if(editingId) html += `<button class="save-btn" style="padding:10px; background:#555; margin-top:5px;" onclick="editingId=null;renderDBForm()">Annuler</button>`;
+            html += `<button class="save-btn" style="padding:12px; margin-top:10px" onclick="saveToDB()">${editingId ? 'METTRE À JOUR' : 'AJOUTER À LA BASE'}</button>`;
+            if(editingId) html += `<button class="save-btn" style="padding:12px; background:#444; color:white; margin-top:8px;" onclick="editingId=null;renderDBForm()">ANNULER</button>`;
             container.innerHTML = html;
         }
 
@@ -124,15 +147,15 @@
                 if(el) item[field] = el.value;
             });
             if(!editingId) dbs[currentDBType].push(item);
-            localStorage.setItem('db_'+currentDBType+'_v3', JSON.stringify(dbs[currentDBType]));
+            localStorage.setItem('db_'+currentDBType+'_v31', JSON.stringify(dbs[currentDBType]));
             editingId = null; renderDBForm(); renderDBList();
         }
 
         function renderDBList() {
             document.getElementById('db-list').innerHTML = dbs[currentDBType].map(item => `
                 <div class="db-item" onclick="toggleDetail(${item.id})">
-                    <span class="del-btn" onclick="event.stopPropagation();deleteDBItem(${item.id})">Supprimer</span>
-                    <span class="edit-btn" onclick="event.stopPropagation();startEditDB(${item.id})">Modifier</span>
+                    <span class="del-btn" onclick="event.stopPropagation();deleteDBItem(${item.id})">Suppr.</span>
+                    <span class="edit-btn" onclick="event.stopPropagation();startEditDB(${item.id})">Modif.</span>
                     <strong>${item.alias}</strong>
                     ${openDetailId === item.id ? `<div class="details-pane">
                         ${item.nom ? `Nom: ${item.nom}<br>` : ''}${item.adresse ? `📍 ${item.adresse}<br>` : ''}
@@ -147,8 +170,8 @@
         function startEditDB(id) { 
             editingId = id; renderDBForm(); 
             const item = dbs[currentDBType].find(i => i.id === id);
-            document.getElementById('f-nom').value = item.nom;
-            if(currentDBType === 'people') document.getElementById('f-alias').value = item.alias;
+            document.getElementById('f-nom').value = item.nom || '';
+            if(currentDBType === 'people' && document.getElementById('f-alias')) document.getElementById('f-alias').value = item.alias || '';
             window.scrollTo(0,0);
         }
 
@@ -179,8 +202,8 @@
         function saveEntry() {
             if(!selections.places) return alert("Lieu obligatoire");
             history.push({ id: Date.now(), date: document.getElementById('entry-date').value, event: selections.events || "Aucun", place: selections.places, people: [...selections.people] });
-            localStorage.setItem('tracker_history_v3', JSON.stringify(history));
-            alert("Enregistré !");
+            localStorage.setItem('tracker_history_v31', JSON.stringify(history));
+            alert("Enregistré avec succès !");
             selections = { places: '', events: '', people: [] }; renderSaisie();
         }
 
@@ -200,22 +223,20 @@
                 if(statFilter === 'year') return d.getFullYear() === now.getFullYear();
                 return true;
             });
-
             const pCount = {}, lCount = {};
             filtered.forEach(e => {
                 lCount[e.place] = (lCount[e.place] || 0) + 1;
                 e.people.forEach(p => pCount[p] = (pCount[p] || 0) + 1);
             });
-
-            let html = `<div class="stats-card"><strong>Lieux Fréquentés</strong><br><br>`;
-            Object.entries(lCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong>${c} fois</strong></div>`);
-            html += `</div><div class="stats-card"><strong>Personnes Vues</strong><br><br>`;
-            Object.entries(pCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong>${c} fois</strong></div>`);
+            let html = `<div class="stats-card"><strong>Top Lieux</strong><br><br>`;
+            Object.entries(lCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong style="color:var(--accent)">${c} x</strong></div>`);
+            html += `</div><div class="stats-card"><strong>Top Personnes</strong><br><br>`;
+            Object.entries(pCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong style="color:var(--accent)">${c} x</strong></div>`);
             html += `</div>`;
             document.getElementById('stats-content').innerHTML = html;
         }
 
-        function deleteDBItem(id) { if(confirm("Supprimer ?")) { dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id); localStorage.setItem('db_'+currentDBType+'_v3', JSON.stringify(dbs[currentDBType])); renderDBList(); } }
+        function deleteDBItem(id) { if(confirm("Supprimer définitivement ?")) { dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id); localStorage.setItem('db_'+currentDBType+'_v31', JSON.stringify(dbs[currentDBType])); renderDBList(); } }
 
         init();
     </script>
