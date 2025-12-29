@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Tracker Pro v2.9</title>
+    <title>Mon Tracker Pro v3.0</title>
     <style>
         :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; --gray: #888; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
@@ -15,17 +15,20 @@
         .view.active { display: block; }
         input, textarea, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
         label { display: block; margin-top: 15px; font-size: 0.8rem; text-transform: uppercase; color: var(--gray); }
-        .tag { padding: 10px 15px; background: #333; border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; }
+        .tag { padding: 10px 15px; background: #333; border-radius: 12px; font-size: 0.9rem; cursor: pointer; border: 1px solid transparent; display: inline-block; margin: 4px; }
         .tag.selected { background: var(--accent); color: black; font-weight: bold; }
-        .select-area { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
         .db-form { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
-        .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); cursor: pointer; }
-        .details-pane { background: #252525; padding: 10px; border-radius: 5px; margin-top: 5px; font-size: 0.85rem; color: var(--gray); border: 1px dashed #444; }
-        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; margin-left: 10px; }
+        .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); }
+        .details-pane { background: #252525; padding: 10px; border-radius: 5px; margin-top: 8px; font-size: 0.85rem; color: var(--gray); border: 1px dashed #444; pointer-events: none; }
+        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; margin-left: 15px; }
         .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; float: right; }
         .save-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 12px; font-weight: bold; margin-top: 20px; color: black; font-size: 1.1rem; }
-        .stats-card { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #333; }
-        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; }
+        .stats-container { display: flex; flex-direction: column; gap: 15px; }
+        .stats-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #333; }
+        .stat-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #444; }
+        .filter-group { display: flex; gap: 5px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .filter-btn { padding: 8px 12px; background: #333; border-radius: 20px; font-size: 0.75rem; border: none; color: white; white-space: nowrap; }
+        .filter-btn.active { background: var(--accent); color: black; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -46,8 +49,14 @@
     </div>
 
     <div id="view-resume" class="view">
-        <div class="header">Statistiques & Performance</div>
-        <div id="stats-content"></div>
+        <div class="header">Statistiques</div>
+        <div class="filter-group">
+            <button class="filter-btn active" onclick="setStatFilter('week', this)">Semaine</button>
+            <button class="filter-btn" onclick="setStatFilter('month', this)">Mois</button>
+            <button class="filter-btn" onclick="setStatFilter('year', this)">Année</button>
+            <button class="filter-btn" onclick="setStatFilter('all', this)">Toujours</button>
+        </div>
+        <div id="stats-content" class="stats-container"></div>
     </div>
 
     <nav class="nav-bar">
@@ -62,12 +71,13 @@
         let currentDBType = '';
         let editingId = null;
         let openDetailId = null;
+        let statFilter = 'week';
         let dbs = {
-            places: JSON.parse(localStorage.getItem('db_places_v29') || "[]"),
-            events: JSON.parse(localStorage.getItem('db_events_v29') || "[]"),
-            people: JSON.parse(localStorage.getItem('db_people_v29') || "[]")
+            places: JSON.parse(localStorage.getItem('db_places_v3') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events_v3') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people_v3') || "[]")
         };
-        let history = JSON.parse(localStorage.getItem('tracker_history_v29') || "[]");
+        let history = JSON.parse(localStorage.getItem('tracker_history_v3') || "[]");
         let selections = { places: '', events: '', people: [] };
 
         function init() { document.getElementById('entry-date').valueAsDate = new Date(); renderSaisie(); }
@@ -77,9 +87,7 @@
             document.querySelectorAll('.view, .nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
             if(dbType) { 
-                currentDBType = dbType; 
-                renderDBForm(); 
-                renderDBList();
+                currentDBType = dbType; renderDBForm(); renderDBList();
                 document.querySelectorAll('.nav-item').forEach(n => { if(n.innerText.toLowerCase().includes(dbType)) n.classList.add('active'); });
             } else {
                 document.querySelectorAll('.nav-item').forEach(n => { if(n.innerText.toLowerCase().includes(viewId)) n.classList.add('active'); });
@@ -90,15 +98,11 @@
 
         function renderDBForm() {
             const container = document.getElementById('form-container');
-            const title = "Nouvelle entrée";
-            let html = `<strong>${title}</strong><br><br>`;
+            let html = `<strong>Nouvelle entrée</strong><br><br>`;
             if (currentDBType === 'people') {
-                html += `<input type="text" id="f-nom" placeholder="Nom complet">
-                         <input type="text" id="f-alias" placeholder="Alias">
-                         <input type="text" id="f-addr" placeholder="Adresse">
-                         <input type="tel" id="f-tel" placeholder="Téléphone">
-                         <input type="text" id="f-insta" placeholder="@ Instagram">
-                         <label>Anniversaire</label><input type="date" id="f-birth">`;
+                html += `<input type="text" id="f-nom" placeholder="Nom complet"><input type="text" id="f-alias" placeholder="Alias">
+                         <input type="text" id="f-addr" placeholder="Adresse"><input type="tel" id="f-tel" placeholder="Téléphone">
+                         <input type="text" id="f-insta" placeholder="@ Instagram"><label>Anniversaire</label><input type="date" id="f-birth">`;
             } else if (currentDBType === 'places') {
                 html += `<input type="text" id="f-nom" placeholder="Nom du lieu"><input type="text" id="f-addr" placeholder="Adresse">`;
             } else if (currentDBType === 'events') {
@@ -115,17 +119,14 @@
             let item = editingId ? dbs[currentDBType].find(i => i.id === editingId) : { id: Date.now() };
             item.nom = nom;
             item.alias = (currentDBType === 'people') ? document.getElementById('f-alias').value.trim() : nom;
-            if(document.getElementById('f-addr')) item.adresse = document.getElementById('f-addr').value;
-            if(document.getElementById('f-tel')) item.tel = document.getElementById('f-tel').value;
-            if(document.getElementById('f-insta')) item.insta = document.getElementById('f-insta').value;
-            if(document.getElementById('f-birth')) item.anniv = document.getElementById('f-birth').value;
-            if(document.getElementById('f-desc')) item.description = document.getElementById('f-desc').value;
+            ['adresse', 'tel', 'insta', 'anniv', 'description'].forEach(field => {
+                const el = document.getElementById('f-' + (field === 'adresse' ? 'addr' : field === 'anniv' ? 'birth' : field === 'description' ? 'desc' : field));
+                if(el) item[field] = el.value;
+            });
             if(!editingId) dbs[currentDBType].push(item);
-            localStorage.setItem('db_'+currentDBType+'_v29', JSON.stringify(dbs[currentDBType]));
+            localStorage.setItem('db_'+currentDBType+'_v3', JSON.stringify(dbs[currentDBType]));
             editingId = null; renderDBForm(); renderDBList();
         }
-
-        function toggleDetail(id) { openDetailId = (openDetailId === id) ? null : id; renderDBList(); }
 
         function renderDBList() {
             document.getElementById('db-list').innerHTML = dbs[currentDBType].map(item => `
@@ -133,20 +134,16 @@
                     <span class="del-btn" onclick="event.stopPropagation();deleteDBItem(${item.id})">Supprimer</span>
                     <span class="edit-btn" onclick="event.stopPropagation();startEditDB(${item.id})">Modifier</span>
                     <strong>${item.alias}</strong>
-                    ${openDetailId === item.id ? `
-                        <div class="details-pane">
-                            ${item.nom ? `Full: ${item.nom}<br>` : ''}
-                            ${item.adresse ? `📍 ${item.adresse}<br>` : ''}
-                            ${item.tel ? `📞 ${item.tel}<br>` : ''}
-                            ${item.insta ? `📸 ${item.insta}<br>` : ''}
-                            ${item.anniv ? `🎂 ${item.anniv}<br>` : ''}
-                            ${item.description ? `📝 ${item.description}` : ''}
-                        </div>
-                    ` : ''}
+                    ${openDetailId === item.id ? `<div class="details-pane">
+                        ${item.nom ? `Nom: ${item.nom}<br>` : ''}${item.adresse ? `📍 ${item.adresse}<br>` : ''}
+                        ${item.tel ? `📞 ${item.tel}<br>` : ''}${item.insta ? `📸 ${item.insta}<br>` : ''}
+                        ${item.anniv ? `🎂 ${item.anniv}<br>` : ''}${item.description ? `📝 ${item.description}` : ''}
+                    </div>` : ''}
                 </div>
             `).join('');
         }
 
+        function toggleDetail(id) { openDetailId = (openDetailId === id) ? null : id; renderDBList(); }
         function startEditDB(id) { 
             editingId = id; renderDBForm(); 
             const item = dbs[currentDBType].find(i => i.id === id);
@@ -155,21 +152,17 @@
             window.scrollTo(0,0);
         }
 
-        function deleteDBItem(id) {
-            if(confirm("Supprimer ?")) {
-                dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id);
-                localStorage.setItem('db_'+currentDBType+'_v29', JSON.stringify(dbs[currentDBType]));
-                renderDBList();
-            }
-        }
-
         function renderSaisie() {
             ['places', 'events', 'people'].forEach(type => {
                 const container = document.getElementById('input-' + type);
-                container.innerHTML = dbs[type].map(item => {
-                    const sel = (type === 'people') ? selections[type].includes(item.alias) : selections[type] === item.alias;
-                    return `<div class="tag ${sel ? 'selected' : ''}" onclick="selectTag('${type}', '${item.alias}')">${item.alias}</div>`;
-                }).join('');
+                container.innerHTML = ''; 
+                dbs[type].forEach(item => {
+                    const btn = document.createElement('div');
+                    btn.className = 'tag ' + ((type === 'people' ? selections[type].includes(item.alias) : selections[type] === item.alias) ? 'selected' : '');
+                    btn.innerText = item.alias;
+                    btn.onclick = () => selectTag(type, item.alias);
+                    container.appendChild(btn);
+                });
             });
         }
 
@@ -186,34 +179,43 @@
         function saveEntry() {
             if(!selections.places) return alert("Lieu obligatoire");
             history.push({ id: Date.now(), date: document.getElementById('entry-date').value, event: selections.events || "Aucun", place: selections.places, people: [...selections.people] });
-            localStorage.setItem('tracker_history_v29', JSON.stringify(history));
+            localStorage.setItem('tracker_history_v3', JSON.stringify(history));
             alert("Enregistré !");
             selections = { places: '', events: '', people: [] }; renderSaisie();
         }
 
+        function setStatFilter(f, btn) {
+            statFilter = f;
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            renderStats();
+        }
+
         function renderStats() {
-            const counts = {};
-            history.forEach(e => {
-                const month = e.date.substring(0, 7);
-                counts[month] = (counts[month] || 0) + 1;
+            const now = new Date();
+            const filtered = history.filter(e => {
+                const d = new Date(e.date);
+                if(statFilter === 'week') return (now - d) < 7 * 86400000;
+                if(statFilter === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+                if(statFilter === 'year') return d.getFullYear() === now.getFullYear();
+                return true;
             });
 
-            let html = `<div class="stats-card"><strong>Sorties par mois</strong><br><br>`;
-            Object.keys(counts).sort().reverse().forEach(m => {
-                html += `<div class="stat-row"><span>${m}</span><strong>${counts[m]} fois</strong></div>`;
+            const pCount = {}, lCount = {};
+            filtered.forEach(e => {
+                lCount[e.place] = (lCount[e.place] || 0) + 1;
+                e.people.forEach(p => pCount[p] = (pCount[p] || 0) + 1);
             });
+
+            let html = `<div class="stats-card"><strong>Lieux Fréquentés</strong><br><br>`;
+            Object.entries(lCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong>${c} fois</strong></div>`);
+            html += `</div><div class="stats-card"><strong>Personnes Vues</strong><br><br>`;
+            Object.entries(pCount).sort((a,b) => b[1]-a[1]).forEach(([n, c]) => html += `<div class="stat-row"><span>${n}</span><strong>${c} fois</strong></div>`);
             html += `</div>`;
-
-            const topPlaces = {};
-            history.forEach(e => topPlaces[e.place] = (topPlaces[e.place] || 0) + 1);
-            html += `<div class="stats-card"><strong>Lieux Favoris</strong><br><br>`;
-            Object.entries(topPlaces).sort((a,b) => b[1]-a[1]).slice(0,5).forEach(([name, count]) => {
-                html += `<div class="stat-row"><span>${name}</span><strong>${count}</strong></div>`;
-            });
-            html += `</div>`;
-
             document.getElementById('stats-content').innerHTML = html;
         }
+
+        function deleteDBItem(id) { if(confirm("Supprimer ?")) { dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id); localStorage.setItem('db_'+currentDBType+'_v3', JSON.stringify(dbs[currentDBType])); renderDBList(); } }
 
         init();
     </script>
