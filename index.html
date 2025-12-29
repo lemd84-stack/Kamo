@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Tracker Pro v2.6</title>
+    <title>Mon Tracker Pro v2.7</title>
     <style>
         :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; --gray: #888; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
@@ -25,9 +25,8 @@
 
         .db-form { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); position: relative; }
-        .action-btns { float: right; display: flex; gap: 10px; }
-        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; }
-        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; }
+        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; float: right; }
+        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; margin-right: 10px; }
 
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .stats-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #333; }
@@ -42,25 +41,19 @@
     <div id="view-saisie" class="view active">
         <div class="header" id="saisie-title">Nouvelle Entrée</div>
         <input type="hidden" id="edit-entry-id">
-        
         <label>Date</label>
         <input type="date" id="entry-date">
-        
-        <label>1. Où ça ? (Lieu)</label>
+        <label>1. Où ça ?</label>
         <div id="input-places" class="select-area"></div>
-
         <label>2. Quel Événement ? (Optionnel)</label>
         <div id="input-events" class="select-area"></div>
-
         <label>3. Avec Qui ?</label>
         <div id="input-people" class="select-area"></div>
-
         <button class="save-btn" id="main-save-btn" onclick="saveEntry()">ENREGISTRER</button>
         <button class="save-btn" id="cancel-edit-btn" style="display:none; background:#555; margin-top:10px;" onclick="cancelEdit()">ANNULER MODIFICATION</button>
     </div>
 
     <div id="view-db" class="view">
-        <div class="header" id="db-title">Base de données</div>
         <div id="form-container" class="db-form"></div>
         <div id="db-list"></div>
     </div>
@@ -73,15 +66,12 @@
             <option value="month">Ce mois-ci</option>
             <option value="week">Cette semaine</option>
         </select>
-
         <div class="stats-grid">
             <div class="stats-card"><span id="stat-total" class="stat-val">0</span><span class="stat-label">Sorties</span></div>
             <div class="stats-card"><span id="stat-unique-people" class="stat-val">0</span><span class="stat-label">Personnes</span></div>
         </div>
-
         <div id="stats-rankings"></div>
         <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
-        <div class="header" style="font-size: 1rem;">Historique (Modifiable)</div>
         <div id="history-list"></div>
     </div>
 
@@ -96,12 +86,12 @@
     <script>
         let currentDBType = '';
         let dbs = {
-            places: JSON.parse(localStorage.getItem('db_places_v26') || "[]"),
-            events: JSON.parse(localStorage.getItem('db_events_v26') || "[]"),
-            people: JSON.parse(localStorage.getItem('db_people_v26') || "[]")
+            places: JSON.parse(localStorage.getItem('db_places_v27') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events_v27') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people_v27') || "[]")
         };
         let selections = { places: '', events: '', people: [] };
-        let history = JSON.parse(localStorage.getItem('tracker_history_v26') || "[]");
+        let history = JSON.parse(localStorage.getItem('tracker_history_v27') || "[]");
 
         function init() {
             document.getElementById('entry-date').valueAsDate = new Date();
@@ -123,53 +113,63 @@
             if (viewId === 'resume') renderStats();
         }
 
-        // --- GESTION DB AVEC ALIAS ---
         function renderDBForm() {
             const container = document.getElementById('form-container');
-            let html = `<strong>Ajouter : ${currentDBType}</strong><br><br>`;
-            html += `<input type="text" id="f-alias" placeholder="Alias (Nom court pour les boutons)">`;
-            html += `<input type="text" id="f-nom" placeholder="Nom complet / Officiel">`;
+            let html = `<strong>Nouvelle entrée</strong><br><br>`;
             
-            if (currentDBType === 'places') html += `<input type="text" id="f-addr" placeholder="Adresse">`;
-            else if (currentDBType === 'people') {
-                html += `<input type="text" id="f-addr" placeholder="Adresse">
+            if (currentDBType === 'people') {
+                html += `<input type="text" id="f-nom" placeholder="Nom complet">
+                         <input type="text" id="f-alias" placeholder="Alias">
+                         <input type="text" id="f-addr" placeholder="Adresse">
                          <input type="tel" id="f-tel" placeholder="Téléphone">
                          <input type="text" id="f-insta" placeholder="@ Instagram">
                          <label>Anniversaire</label><input type="date" id="f-birth">`;
-            } else if (currentDBType === 'events') html += `<textarea id="f-desc" placeholder="Description"></textarea>`;
+            } else if (currentDBType === 'places') {
+                html += `<input type="text" id="f-nom" placeholder="Nom du lieu">
+                         <input type="text" id="f-addr" placeholder="Adresse">`;
+            } else if (currentDBType === 'events') {
+                html += `<input type="text" id="f-nom" placeholder="Nom de l'événement">
+                         <textarea id="f-desc" placeholder="Description"></textarea>`;
+            }
             
             html += `<button class="save-btn" style="padding:10px;margin-top:5px" onclick="addToDB()">Ajouter à la base</button>`;
             container.innerHTML = html;
         }
 
         function addToDB() {
-            const alias = document.getElementById('f-alias').value.trim();
-            if(!alias) return alert("L'alias est obligatoire");
+            const mainName = document.getElementById('f-nom').value.trim();
+            if(!mainName) return alert("Le nom est obligatoire");
 
-            if(dbs[currentDBType].some(i => i.alias.toLowerCase() === alias.toLowerCase())) {
-                return alert("Cet alias existe déjà !");
-            }
-
-            const newItem = { id: Date.now(), alias: alias, nom: document.getElementById('f-nom').value };
-            if(currentDBType === 'places') newItem.adresse = document.getElementById('f-addr').value;
-            if(currentDBType === 'events') newItem.description = document.getElementById('f-desc').value;
+            const newItem = { id: Date.now(), nom: mainName };
+            
             if(currentDBType === 'people') {
+                newItem.alias = document.getElementById('f-alias').value.trim() || mainName;
                 newItem.adresse = document.getElementById('f-addr').value;
                 newItem.tel = document.getElementById('f-tel').value;
                 newItem.insta = document.getElementById('f-insta').value;
                 newItem.anniv = document.getElementById('f-birth').value;
+            } else if(currentDBType === 'places') {
+                newItem.alias = mainName; // Alias = Nom pour les lieux
+                newItem.adresse = document.getElementById('f-addr').value;
+            } else if(currentDBType === 'events') {
+                newItem.alias = mainName; // Alias = Nom pour les événements
+                newItem.description = document.getElementById('f-desc').value;
+            }
+
+            if(dbs[currentDBType].some(i => i.alias.toLowerCase() === newItem.alias.toLowerCase())) {
+                return alert("Cet alias ou nom existe déjà !");
             }
 
             dbs[currentDBType].push(newItem);
-            localStorage.setItem('db_'+currentDBType+'_v26', JSON.stringify(dbs[currentDBType]));
+            localStorage.setItem('db_'+currentDBType+'_v27', JSON.stringify(dbs[currentDBType]));
             renderDBForm(); renderDBList();
         }
 
         function renderDBList() {
             document.getElementById('db-list').innerHTML = dbs[currentDBType].map(item => `
                 <div class="db-item">
-                    <span class="del-btn" style="float:right" onclick="deleteDBItem(${item.id})">Supprimer</span>
-                    <strong>${item.alias}</strong> <small>(${item.nom || 'Sans nom complet'})</small>
+                    <span class="del-btn" onclick="deleteDBItem(${item.id})">Supprimer</span>
+                    <strong>${item.alias}</strong> ${item.nom !== item.alias ? `<br><small style="color:var(--gray)">${item.nom}</small>` : ''}
                 </div>
             `).join('');
         }
@@ -177,12 +177,11 @@
         function deleteDBItem(id) {
             if(confirm("Supprimer de la base ?")) {
                 dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id);
-                localStorage.setItem('db_'+currentDBType+'_v26', JSON.stringify(dbs[currentDBType]));
+                localStorage.setItem('db_'+currentDBType+'_v27', JSON.stringify(dbs[currentDBType]));
                 renderDBList();
             }
         }
 
-        // --- GESTION SAISIE ---
         function renderSaisie() {
             renderTagCloud('places', 'single');
             renderTagCloud('events', 'single');
@@ -209,112 +208,30 @@
 
         function saveEntry() {
             if(!selections.places) return alert("Veuillez choisir un lieu.");
-            
-            const editId = document.getElementById('edit-entry-id').value;
-            const entryDate = document.getElementById('entry-date').value;
-
-            // Anti-doublon strict (Même date, lieu et événement)
-            if(!editId && history.some(e => e.date === entryDate && e.place === selections.places && e.event === selections.events)) {
-                return alert("Une entrée identique existe déjà pour cette date !");
-            }
-
             const entryData = {
-                id: editId ? parseInt(editId) : Date.now(),
-                date: entryDate,
+                id: document.getElementById('edit-entry-id').value || Date.now(),
+                date: document.getElementById('entry-date').value,
                 event: selections.events || "Aucun événement",
                 place: selections.places,
                 people: [...selections.people]
             };
-
-            if(editId) {
-                const index = history.findIndex(e => e.id === parseInt(editId));
-                history[index] = entryData;
-            } else {
-                history.push(entryData);
-            }
-
-            localStorage.setItem('tracker_history_v26', JSON.stringify(history));
-            alert(editId ? "Entrée modifiée !" : "Enregistré !");
+            history.push(entryData);
+            localStorage.setItem('tracker_history_v27', JSON.stringify(history));
+            alert("Enregistré !");
             cancelEdit();
         }
 
-        function startEdit(id) {
-            const entry = history.find(e => e.id === id);
-            document.getElementById('edit-entry-id').value = entry.id;
-            document.getElementById('entry-date').value = entry.date;
-            selections.events = entry.event === "Aucun événement" ? "" : entry.event;
-            selections.places = entry.place;
-            selections.people = [...entry.people];
-            
-            document.getElementById('saisie-title').innerText = "Modifier l'Entrée";
-            document.getElementById('main-save-btn').innerText = "METTRE À JOUR";
-            document.getElementById('cancel-edit-btn').style.display = "block";
-            showView('saisie');
-        }
-
         function cancelEdit() {
-            document.getElementById('edit-entry-id').value = "";
-            document.getElementById('saisie-title').innerText = "Nouvelle Entrée";
-            document.getElementById('main-save-btn').innerText = "ENREGISTRER";
-            document.getElementById('cancel-edit-btn').style.display = "none";
-            document.getElementById('entry-date').valueAsDate = new Date();
             selections = { places: '', events: '', people: [] };
             renderSaisie();
         }
 
-        function deleteEntry(id) {
-            if(confirm("Supprimer cette entrée ?")) {
-                history = history.filter(e => e.id !== id);
-                localStorage.setItem('tracker_history_v26', JSON.stringify(history));
-                renderStats();
-            }
-        }
-
-        // --- STATS & HISTORIQUE ---
         function renderStats() {
-            const period = document.getElementById('stats-period').value;
-            const now = new Date();
-            const filtered = history.filter(e => {
-                if(period === 'all') return true;
-                const eDate = new Date(e.date);
-                if(period === 'year') return eDate.getFullYear() === now.getFullYear();
-                if(period === 'month') return eDate.getMonth() === now.getMonth() && eDate.getFullYear() === now.getFullYear();
-                if(period === 'week') return (now - eDate) / (1000*60*60*24) <= 7;
-            }).sort((a,b) => new Date(b.date) - new Date(a.date));
-
+            const filtered = history.sort((a,b) => new Date(b.date) - new Date(a.date));
             document.getElementById('stat-total').innerText = filtered.length;
-            
-            let peopleMap = {}, placeMap = {}, eventMap = {}, uniqueP = new Set();
-            filtered.forEach(e => {
-                placeMap[e.place] = (placeMap[e.place] || 0) + 1;
-                if(e.event !== "Aucun événement") eventMap[e.event] = (eventMap[e.event] || 0) + 1;
-                e.people.forEach(p => { peopleMap[p] = (peopleMap[p] || 0) + 1; uniqueP.add(p); });
-            });
-
-            document.getElementById('stat-unique-people').innerText = uniqueP.size;
-
-            let html = renderRankSection("🏆 Top Personnes", peopleMap);
-            html += renderRankSection("📍 Top Lieux", placeMap);
-            html += renderRankSection("🎫 Top Événements", eventMap);
-            document.getElementById('stats-rankings').innerHTML = html;
-
             document.getElementById('history-list').innerHTML = filtered.map(e => `
-                <div class="history-item">
-                    <div class="action-btns">
-                        <span class="edit-btn" onclick="startEdit(${e.id})">Modifier</span>
-                        <span class="del-btn" onclick="deleteEntry(${e.id})">X</span>
-                    </div>
-                    <strong>${e.date}</strong> — ${e.place}<br>
-                    <small>${e.event} avec ${e.people.join(', ') || 'seul'}</small>
-                </div>
+                <div class="history-item"><strong>${e.date}</strong> — ${e.place}<br><small>${e.event}</small></div>
             `).join('');
-        }
-
-        function renderRankSection(title, data) {
-            const sorted = Object.entries(data).sort((a,b) => b[1] - a[1]).slice(0, 5);
-            if(sorted.length === 0) return "";
-            return `<div style="margin-top:20px"><strong>${title}</strong></div>` + 
-                   sorted.map(item => `<div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid #333; font-size:0.9rem;"><span>${item[0]}</span><span>${item[1]} fois</span></div>`).join('');
         }
 
         init();
