@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mon Tracker Pro</title>
+    <title>Mon Tracker Pro v2.5</title>
     <style>
         :root { --bg: #121212; --card: #1e1e1e; --accent: #bb86fc; --text: #ffffff; --nav: #252525; --gray: #888; }
         body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; padding-bottom: 120px; }
         
-        /* Navigation avec surbrillance */
         .nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--nav); display: flex; justify-content: space-around; padding: 10px 5px; border-top: 1px solid #333; z-index: 100; }
         .nav-item { background: none; border: none; color: var(--gray); font-size: 0.65rem; cursor: pointer; text-transform: uppercase; padding: 10px 5px; border-radius: 8px; flex: 1; transition: 0.3s; }
         .nav-item.active { color: var(--accent); background: rgba(187, 134, 252, 0.1); font-weight: bold; }
@@ -17,7 +16,6 @@
         .view { display: none; }
         .view.active { display: block; }
 
-        /* Formulaires & Inputs */
         input, textarea, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #333; background: #2c2c2c; color: white; box-sizing: border-box; margin-bottom: 10px; font-size: 1rem; }
         label { display: block; margin-top: 15px; font-size: 0.8rem; text-transform: uppercase; color: var(--gray); }
         
@@ -25,54 +23,47 @@
         .tag.selected { background: var(--accent); color: black; font-weight: bold; }
         .select-area { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 
-        /* DB Management */
         .db-form { background: var(--card); padding: 15px; border-radius: 12px; margin-bottom: 20px; border: 1px solid #333; }
         .db-item { background: var(--card); padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--accent); position: relative; }
-        .delete-btn { color: #ff5252; float: right; font-size: 0.8rem; cursor: pointer; }
+        .action-btns { float: right; display: flex; gap: 10px; }
+        .del-btn { color: #ff5252; cursor: pointer; font-size: 0.8rem; }
+        .edit-btn { color: var(--accent); cursor: pointer; font-size: 0.8rem; }
 
-        /* Stats */
         .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
         .stats-card { background: var(--card); padding: 15px; border-radius: 12px; border: 1px solid #333; }
         .stat-val { font-size: 1.4rem; font-weight: bold; color: var(--accent); display: block; }
-        .stat-label { font-size: 0.7rem; color: var(--gray); text-transform: uppercase; }
         
-        .ranking-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #333; font-size: 0.9rem; }
-
+        .history-item { background: #252525; padding: 12px; border-radius: 8px; margin-bottom: 10px; border-left: 3px solid var(--accent); }
         .save-btn { width: 100%; padding: 18px; background: var(--accent); border: none; border-radius: 12px; font-weight: bold; margin-top: 20px; color: black; font-size: 1.1rem; }
     </style>
 </head>
 <body>
 
     <div id="view-saisie" class="view active">
-        <div class="header">Nouvelle Entrée</div>
+        <div class="header" id="saisie-title">Nouvelle Entrée</div>
+        <input type="hidden" id="edit-entry-id">
         <label>Date</label>
         <input type="date" id="entry-date">
         
         <label>1. Événement</label>
         <div id="input-events" class="select-area"></div>
-
         <label>2. Avec Qui ?</label>
         <div id="input-people" class="select-area"></div>
-
         <label>3. Où ça ?</label>
         <div id="input-places" class="select-area"></div>
 
-        <button class="save-btn" onclick="saveEntry()">ENREGISTRER</button>
+        <button class="save-btn" id="main-save-btn" onclick="saveEntry()">ENREGISTRER</button>
+        <button class="save-btn" id="cancel-edit-btn" style="display:none; background:#555; margin-top:10px;" onclick="cancelEdit()">ANNULER MODIFICATION</button>
     </div>
 
     <div id="view-db" class="view">
         <div class="header" id="db-title">Base de données</div>
-        
-        <div id="form-container" class="db-form">
-            </div>
-
+        <div id="form-container" class="db-form"></div>
         <div id="db-list"></div>
     </div>
 
     <div id="view-resume" class="view">
-        <div class="header">Statistiques & Résumés</div>
-        
-        <label>Période d'analyse</label>
+        <div class="header">Résumés & Historique</div>
         <select id="stats-period" onchange="renderStats()">
             <option value="all">Depuis toujours</option>
             <option value="year">Cette année</option>
@@ -85,8 +76,10 @@
             <div class="stats-card"><span id="stat-unique-people" class="stat-val">0</span><span class="stat-label">Personnes</span></div>
         </div>
 
-        <div class="header" style="font-size: 1rem;">Top Fréquentation</div>
         <div id="stats-rankings"></div>
+        <hr style="border:0; border-top:1px solid #333; margin:20px 0;">
+        <div class="header" style="font-size: 1rem;">Historique (Modifiable)</div>
+        <div id="history-list"></div>
     </div>
 
     <nav class="nav-bar">
@@ -100,12 +93,12 @@
     <script>
         let currentDBType = '';
         let dbs = {
-            places: JSON.parse(localStorage.getItem('db_places_full') || "[]"),
-            events: JSON.parse(localStorage.getItem('db_events_full') || "[]"),
-            people: JSON.parse(localStorage.getItem('db_people_full') || "[]")
+            places: JSON.parse(localStorage.getItem('db_places_v25') || "[]"),
+            events: JSON.parse(localStorage.getItem('db_events_v25') || "[]"),
+            people: JSON.parse(localStorage.getItem('db_people_v25') || "[]")
         };
         let selections = { places: '', events: '', people: [] };
-        let history = JSON.parse(localStorage.getItem('tracker_history_v2') || "[]");
+        let history = JSON.parse(localStorage.getItem('tracker_history_v25') || "[]");
 
         function init() {
             document.getElementById('entry-date').valueAsDate = new Date();
@@ -115,51 +108,47 @@
         function showView(viewId, dbType = '') {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            
             document.getElementById('view-' + viewId).classList.add('active');
             
-            // Gestion de la surbrillance
             const btnText = dbType ? dbType : viewId;
             document.querySelectorAll('.nav-item').forEach(btn => {
                 if(btn.innerText.toLowerCase().includes(btnText.toLowerCase())) btn.classList.add('active');
             });
 
-            if (dbType) {
-                currentDBType = dbType;
-                renderDBForm();
-                renderDBList();
-            }
+            if (dbType) { currentDBType = dbType; renderDBForm(); renderDBList(); }
             if (viewId === 'saisie') renderSaisie();
             if (viewId === 'resume') renderStats();
         }
 
-        // --- GESTION BASES DE DONNÉES ---
+        // --- GESTION DB AVEC ALIAS ---
         function renderDBForm() {
             const container = document.getElementById('form-container');
             let html = `<strong>Ajouter : ${currentDBType}</strong><br><br>`;
+            html += `<input type="text" id="f-alias" placeholder="Alias (Nom qui sera sur les boutons)">`;
+            html += `<input type="text" id="f-nom" placeholder="Nom complet">`;
             
-            if (currentDBType === 'places') {
-                html += `<input type="text" id="f-nom" placeholder="Nom du lieu">
-                         <input type="text" id="f-addr" placeholder="Adresse">`;
-            } else if (currentDBType === 'people') {
-                html += `<input type="text" id="f-nom" placeholder="Nom complet">
-                         <input type="text" id="f-addr" placeholder="Adresse">
+            if (currentDBType === 'places') html += `<input type="text" id="f-addr" placeholder="Adresse">`;
+            else if (currentDBType === 'people') {
+                html += `<input type="text" id="f-addr" placeholder="Adresse">
                          <input type="tel" id="f-tel" placeholder="Téléphone">
                          <input type="text" id="f-insta" placeholder="@ Instagram">
                          <label>Anniversaire</label><input type="date" id="f-birth">`;
-            } else if (currentDBType === 'events') {
-                html += `<input type="text" id="f-nom" placeholder="Nom de l'événement">
-                         <textarea id="f-desc" placeholder="Description"></textarea>`;
-            }
+            } else if (currentDBType === 'events') html += `<textarea id="f-desc" placeholder="Description"></textarea>`;
             
             html += `<button class="save-btn" style="padding:10px;margin-top:5px" onclick="addToDB()">Ajouter à la base</button>`;
             container.innerHTML = html;
         }
 
         function addToDB() {
-            const newItem = { id: Date.now(), nom: document.getElementById('f-nom').value };
-            if(!newItem.nom) return alert("Le nom est obligatoire");
+            const alias = document.getElementById('f-alias').value.trim();
+            if(!alias) return alert("L'alias est obligatoire");
 
+            // Anti-doublon
+            if(dbs[currentDBType].some(i => i.alias.toLowerCase() === alias.toLowerCase())) {
+                return alert("Cet alias existe déjà dans la base !");
+            }
+
+            const newItem = { id: Date.now(), alias: alias, nom: document.getElementById('f-nom').value };
             if(currentDBType === 'places') newItem.adresse = document.getElementById('f-addr').value;
             if(currentDBType === 'events') newItem.description = document.getElementById('f-desc').value;
             if(currentDBType === 'people') {
@@ -170,31 +159,28 @@
             }
 
             dbs[currentDBType].push(newItem);
-            localStorage.setItem('db_'+currentDBType+'_full', JSON.stringify(dbs[currentDBType]));
-            renderDBForm();
-            renderDBList();
+            localStorage.setItem('db_'+currentDBType+'_v25', JSON.stringify(dbs[currentDBType]));
+            renderDBForm(); renderDBList();
         }
 
         function renderDBList() {
-            const list = document.getElementById('db-list');
-            list.innerHTML = dbs[currentDBType].map(item => `
+            document.getElementById('db-list').innerHTML = dbs[currentDBType].map(item => `
                 <div class="db-item">
-                    <span class="delete-btn" onclick="deleteItem(${item.id})">Supprimer</span>
-                    <strong>${item.nom}</strong><br>
-                    <small style="color:var(--gray)">${item.adresse || item.description || ''}</small>
+                    <span class="del-btn" style="float:right" onclick="deleteDBItem(${item.id})">Supprimer</span>
+                    <strong>${item.alias}</strong> <small>(${item.nom})</small>
                 </div>
             `).join('');
         }
 
-        function deleteItem(id) {
-            if(confirm("Supprimer cet élément ?")) {
+        function deleteDBItem(id) {
+            if(confirm("Supprimer de la base ?")) {
                 dbs[currentDBType] = dbs[currentDBType].filter(i => i.id !== id);
-                localStorage.setItem('db_'+currentDBType+'_full', JSON.stringify(dbs[currentDBType]));
+                localStorage.setItem('db_'+currentDBType+'_v25', JSON.stringify(dbs[currentDBType]));
                 renderDBList();
             }
         }
 
-        // --- GESTION SAISIE ---
+        // --- GESTION SAISIE & MODIFICATION ---
         function renderSaisie() {
             renderTagCloud('events', 'single');
             renderTagCloud('people', 'multi');
@@ -203,13 +189,9 @@
 
         function renderTagCloud(type, mode) {
             const container = document.getElementById('input-' + type);
-            if(dbs[type].length === 0) {
-                container.innerHTML = `<small style="color:var(--gray)">Allez dans l'onglet ${type} pour ajouter des données.</small>`;
-                return;
-            }
             container.innerHTML = dbs[type].map(item => {
-                const isSelected = mode === 'single' ? selections[type] === item.nom : selections[type].includes(item.nom);
-                return `<div class="tag ${isSelected ? 'selected' : ''}" onclick="selectTag('${type}', '${item.nom}', '${mode}')">${item.nom}</div>`;
+                const isSelected = mode === 'single' ? selections[type] === item.alias : selections[type].includes(item.alias);
+                return `<div class="tag ${isSelected ? 'selected' : ''}" onclick="selectTag('${type}', '${item.alias}', '${mode}')">${item.alias}</div>`;
             }).join('');
         }
 
@@ -224,67 +206,100 @@
         }
 
         function saveEntry() {
-            if(!selections.events || !selections.places) return alert("Veuillez sélectionner au moins un événement et un lieu.");
-            const entry = {
-                id: Date.now(),
-                date: document.getElementById('entry-date').value,
+            if(!selections.events || !selections.places) return alert("Veuillez choisir au moins un événement et un lieu.");
+            
+            const editId = document.getElementById('edit-entry-id').value;
+            const entryDate = document.getElementById('entry-date').value;
+
+            // Anti-doublon pour les nouvelles entrées (même date, même lieu, même événement)
+            if(!editId && history.some(e => e.date === entryDate && e.place === selections.places && e.event === selections.events)) {
+                return alert("Une entrée identique existe déjà pour cette date !");
+            }
+
+            const entryData = {
+                id: editId ? parseInt(editId) : Date.now(),
+                date: entryDate,
                 event: selections.events,
                 place: selections.places,
                 people: [...selections.people]
             };
-            history.push(entry);
-            localStorage.setItem('tracker_history_v2', JSON.stringify(history));
-            alert("Journée enregistrée !");
+
+            if(editId) {
+                const index = history.findIndex(e => e.id === parseInt(editId));
+                history[index] = entryData;
+            } else {
+                history.push(entryData);
+            }
+
+            localStorage.setItem('tracker_history_v25', JSON.stringify(history));
+            alert(editId ? "Entrée modifiée !" : "Enregistré !");
+            cancelEdit();
+        }
+
+        function startEdit(id) {
+            const entry = history.find(e => e.id === id);
+            document.getElementById('edit-entry-id').value = entry.id;
+            document.getElementById('entry-date').value = entry.date;
+            selections.events = entry.event;
+            selections.places = entry.place;
+            selections.people = [...entry.people];
+            
+            document.getElementById('saisie-title').innerText = "Modifier l'Entrée";
+            document.getElementById('main-save-btn').innerText = "METTRE À JOUR";
+            document.getElementById('cancel-edit-btn').style.display = "block";
+            showView('saisie');
+        }
+
+        function cancelEdit() {
+            document.getElementById('edit-entry-id').value = "";
+            document.getElementById('saisie-title').innerText = "Nouvelle Entrée";
+            document.getElementById('main-save-btn').innerText = "ENREGISTRER";
+            document.getElementById('cancel-edit-btn').style.display = "none";
+            document.getElementById('entry-date').valueAsDate = new Date();
             selections = { places: '', events: '', people: [] };
             renderSaisie();
         }
 
-        // --- STATISTIQUES ---
+        function deleteEntry(id) {
+            if(confirm("Supprimer définitivement cette entrée ?")) {
+                history = history.filter(e => e.id !== id);
+                localStorage.setItem('tracker_history_v25', JSON.stringify(history));
+                renderStats();
+            }
+        }
+
+        // --- STATS & HISTORIQUE ---
         function renderStats() {
             const period = document.getElementById('stats-period').value;
             const now = new Date();
-            
             const filtered = history.filter(e => {
                 if(period === 'all') return true;
                 const eDate = new Date(e.date);
                 if(period === 'year') return eDate.getFullYear() === now.getFullYear();
-                if(period === 'month') return eDate.getMonth() === now.getMonth() && eDate.getFullYear() === now.getFullYear();
-                if(period === 'week') {
-                    const diff = (now - eDate) / (1000 * 60 * 60 * 24);
-                    return diff <= 7;
-                }
-            });
+                if(period === 'month') return eDate.getMonth() === now.getMonth();
+                if(period === 'week') return (now - eDate) / (1000*60*60*24) <= 7;
+            }).sort((a,b) => new Date(b.date) - new Date(a.date));
 
             document.getElementById('stat-total').innerText = filtered.length;
             
-            let peopleCount = {};
-            let placeCount = {};
-            let eventCount = {};
-            let uniquePeople = new Set();
-
+            let peopleMap = {}, placeMap = {}, eventMap = {}, uniqueP = new Set();
             filtered.forEach(e => {
-                placeCount[e.place] = (placeCount[e.place] || 0) + 1;
-                eventCount[e.event] = (eventCount[e.event] || 0) + 1;
-                e.people.forEach(p => {
-                    peopleCount[p] = (peopleCount[p] || 0) + 1;
-                    uniquePeople.add(p);
-                });
+                placeMap[e.place] = (placeMap[e.place] || 0) + 1;
+                eventMap[e.event] = (eventMap[e.event] || 0) + 1;
+                e.people.forEach(p => { peopleMap[p] = (peopleMap[p] || 0) + 1; uniqueP.add(p); });
             });
 
-            document.getElementById('stat-unique-people').innerText = uniquePeople.size;
-
-            let html = renderRankSection("🏆 Top Personnes", peopleCount);
-            html += renderRankSection("📍 Top Lieux", placeCount);
-            html += renderRankSection("🎫 Top Événements", eventCount);
-            
-            document.getElementById('stats-rankings').innerHTML = html;
-        }
-
-        function renderRankSection(title, data) {
-            const sorted = Object.entries(data).sort((a,b) => b[1] - a[1]).slice(0, 5);
-            if(sorted.length === 0) return "";
-            return `<div style="margin-top:20px"><strong>${title}</strong></div>` + 
-                   sorted.map(item => `<div class="ranking-item"><span>${item[0]}</span><span>${item[1]} fois</span></div>`).join('');
+            document.getElementById('stat-unique-people').innerText = uniqueP.size;
+            document.getElementById('history-list').innerHTML = filtered.map(e => `
+                <div class="history-item">
+                    <div class="action-btns">
+                        <span class="edit-btn" onclick="startEdit(${e.id})">Modifier</span>
+                        <span class="del-btn" onclick="deleteEntry(${e.id})">X</span>
+                    </div>
+                    <strong>${e.date}</strong> — ${e.event}<br>
+                    <small>${e.place} avec ${e.people.join(', ') || 'seul'}</small>
+                </div>
+            `).join('');
         }
 
         init();
